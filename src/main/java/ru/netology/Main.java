@@ -1,17 +1,37 @@
 package ru.netology;
 
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.ExecutionException;
 
 public class Main {
     public static final Map<Integer, Integer> sizeToFreq = new HashMap<>();
 
     public static void main(String[] args) throws ExecutionException, InterruptedException {
-        final ExecutorService threadPoll = Executors.newFixedThreadPool(5);
-        List<Future> taskList = new ArrayList<>();
+
+        Runnable maxFrequence = () -> {
+            while (!Thread.interrupted()) {
+                synchronized (sizeToFreq) {
+                    try {
+                        sizeToFreq.wait();
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                    int keyOfMaxValue = 0;
+                    for (Map.Entry<Integer, Integer> map : sizeToFreq.entrySet()) {
+                        if (map.getValue() > keyOfMaxValue) keyOfMaxValue = map.getKey();
+                    }
+                    System.out.printf("Max frequence now: " + keyOfMaxValue + "%n");
+
+                }
+            }
+        };
+        Thread curentMax = new Thread(maxFrequence);
+        curentMax.start();
 
         for (int i = 0; i < 1000; i++) {
-            Callable<String> logic = () -> {
+            Runnable logic = () -> {
                 String route = generateRoute("RLRFR", 100);
                 long freq = route.chars().filter(ch -> ch == 'R').count();
 
@@ -22,19 +42,17 @@ public class Main {
                         int value = sizeToFreq.get((int) freq);
                         sizeToFreq.put((int) freq, value + 1);
                     }
+                    sizeToFreq.notify();
                 }
-                return String.format("This route have %d R", freq);
-
+                System.out.printf("This route have %d R%n", freq);
             };
-            final Future<String> future = threadPoll.submit(logic);
-            taskList.add(future);
-
+            Thread thread = new Thread(logic);
+            thread.start();
+            thread.join();
         }
 
-        for (Future<String> result : taskList) {
-            System.out.println(result.get());
-        }
-        threadPoll.shutdown();
+
+        curentMax.interrupt();
         System.out.println();
         System.out.println(sizeToFreq);
 
