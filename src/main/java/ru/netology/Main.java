@@ -42,9 +42,10 @@ public class Main {
                         int value = sizeToFreq.get((int) freq);
                         sizeToFreq.put((int) freq, value + 1);
                     }
+                    System.out.printf("This route have %d R%n", freq);
                     sizeToFreq.notify();
                 }
-                System.out.printf("This route have %d R%n", freq);
+
             };
             Thread thread = new Thread(logic);
             thread.start();
